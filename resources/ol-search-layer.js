@@ -1,14 +1,11 @@
 function hasClass(el, cls) {
-  return el.className && new RegExp('(\\s|^)' +
-    cls + '(\\s|$)').test(el.className);
+  return el.className && new RegExp('(\\s|^)' + cls + '(\\s|$)').test(el.className);
 }
-
 function addClass(elem, className) {
   if (!hasClass(elem, className)) {
     elem.className += ' ' + className;
   }
 }
-
 function removeClass(elem, className) {
   var newClass = ' ' + elem.className.replace(/[\t\r\n]/g, ' ') + ' ';
   if (hasClass(elem, className)) {
@@ -18,25 +15,16 @@ function removeClass(elem, className) {
     elem.className = newClass.replace(/^\s+|\s+$/g, '');
   }
 }
-
-
 class SearchLayer extends ol.control.Control {
   constructor(optOptions) {
-    const horseyComponentRef = { current: null };
     const selectRef = { current: null };
-
     const options = optOptions || {};
     if (!options.layer) {
       throw new Error('Missing layer in options');
     }
-	
-	options.maxResults = (optOptions && typeof optOptions.maxResults === 'number') 
-	  ? optOptions.maxResults 
-	  : 10;
-
     options.map = optOptions.map;
     options.colName = optOptions.colName;
-
+    options.zoom = optOptions.zoom || 12;
     // Detect vector source
     let source;
     if (options.layer instanceof ol.layer.Image &&
@@ -45,10 +33,9 @@ class SearchLayer extends ol.control.Control {
     } else if (options.layer instanceof ol.layer.Vector) {
       source = options.layer.getSource();
     }
-	if (source instanceof ol.source.Cluster) {
-	  source = source.getSource();
-	}
-
+    if (source instanceof ol.source.Cluster) {
+      source = source.getSource();
+    }
     // Create button
     const button = document.createElement('button');
     const toggleHideShowInput = () => {
@@ -58,23 +45,17 @@ class SearchLayer extends ol.control.Control {
       } else {
         input.value = '';
         addClass(input, 'search-layer-collapsed');
-        if (horseyComponentRef.current) {
-          horseyComponentRef.current.hide();
-        }
         if (selectRef.current) {
           selectRef.current.getFeatures().clear();
         }
       }
     };
-
     button.addEventListener('click', toggleHideShowInput, false);
     button.addEventListener('touchstart', toggleHideShowInput, false);
-
     // Create input
     const form = document.createElement('form');
-    form.setAttribute('id', 'random');
+    form.setAttribute('id', 'search-form');
     form.onsubmit = undefined;
-
     const input = document.createElement('input');
     input.setAttribute('id', 'ol-search-input');
     const defaultInputClass = ['search-layer-input-search'];
@@ -85,78 +66,69 @@ class SearchLayer extends ol.control.Control {
     input.setAttribute('placeholder', 'Search ...');
     input.setAttribute('type', 'text');
     form.appendChild(input);
-
     // Build control element
     const element = document.createElement('div');
     element.className = 'search-layer ol-unselectable ol-control';
     element.appendChild(button);
     element.appendChild(form);
-
     // Initialize base class
     super({
       element: element,
       target: options.target
     });
-
     // Create select interaction
     const select = new ol.interaction.Select({
       id: options.selectId || 'defaultSearchLayer',
       layers: [options.layer],
       condition: ol.events.condition.never
     });
-
     selectRef.current = select;
-
     const map = options.map;
     map.addInteraction(select);
 
-    // Setup horsey autocomplete
+    // Geometry types for zooming
     const typesToZoomToExtent = [
       'MultiPoint', 'LineString', 'MultiLineString', 'MultiPolygon', 'Polygon'
     ];
     const typesToZoomToCenterAndZoom = ['Point'];
 
-    const returnHorsey = (input, source, map, select, options) => {
-      return horsey(input, {
-        source: [{
-          list: source.getFeatures().map((el, i) => {
-            if (el.getId() === undefined) {
-              el.setId(i);
-            }
-            return {
-              text: el.get(options.colName),
-              value: el.getId()
-            };
-          })
-        }],
-        getText: 'text',
-        getValue: 'value',
-		limit: options.maxResults,
-        predictNextSearch: function(info) {
-          const feat = source.getFeatureById(info.selection.value);
-          const featType = feat.getGeometry().getType();
-
-          if (typesToZoomToCenterAndZoom.includes(featType)) {
-            const newCenter = ol.extent.getCenter(feat.getGeometry().getExtent());
-            map.getView().setCenter(newCenter);
-            map.getView().setZoom(options.zoom || 12);
-          } else if (typesToZoomToExtent.includes(featType)) {
-            map.getView().fit(feat.getGeometry().getExtent(), map.getSize());
-          }
-
-          select.getFeatures().clear();
-          select.getFeatures().push(feat);
-        }
+    // Form submit handler for exact match search
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      const searchText = input.value.trim();
+      if (!searchText) {
+        selectRef.current.getFeatures().clear();
+        return;
+      }
+      const features = source.getFeatures();
+      const matchedFeature = features.find(f => {
+        const val = (f.get(options.colName) ?? '').toString();
+        return val === searchText;
       });
-    };
+      if (matchedFeature) {
+        selectRef.current.getFeatures().clear();
+        selectRef.current.getFeatures().push(matchedFeature);
+        const geom = matchedFeature.getGeometry();
+        if (geom) {
+          const featType = geom.getType();
+          if (typesToZoomToCenterAndZoom.includes(featType)) {
+            const center = ol.extent.getCenter(geom.getExtent());
+            map.getView().setCenter(center);
+            map.getView().setZoom(options.zoom);
+          } else if (typesToZoomToExtent.includes(featType)) {
+            map.getView().fit(geom.getExtent(), map.getSize());
+          }
+        }
+      } else {
+        selectRef.current.getFeatures().clear();
+      }
+    });
 
-    if (source.getState() === 'ready') {
-      horseyComponentRef.current = returnHorsey(input, source, map, select, options);
-    }
-
-    source.once('change', () => {
-      if (source.getState() === 'ready') {
-        horseyComponentRef.current = returnHorsey(input, source, map, select, options);
+    // Optional: Enter key triggers form submit
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        form.dispatchEvent(new Event('submit'));
       }
     });
   }
