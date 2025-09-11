@@ -13,7 +13,10 @@
         <link href="resources/photon-geocoder-autocomplete.min.css" rel="stylesheet">
         <link rel="stylesheet" href="./resources/ol-layerswitcher.css">
         <link rel="stylesheet" href="./resources/qgis2web.css">
+        <link rel="manifest" href="/Gudur/manifest.webmanifest">
+        <meta name="theme-color" content="#0d6efd" />
         <style>
+        
         html, body {
             background-color: #5e5e5e;
         }
@@ -47,6 +50,11 @@
         </style>
         <title></title>
     </head>
+    <script>
+        if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/Gudur/sw.js', { scope: '/Gudur/' });
+          }
+        </script>
     <body>
         <div id="map">
             <div id="popup" class="ol-popup">
@@ -70,3 +78,4 @@
         <script src="./resources/qgis2web.js"></script>
     </body>
 </html>
+
