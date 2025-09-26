@@ -562,53 +562,13 @@ coords.push([
    ]);
   }
  coords.push(pos); // close sector
-
-  wedgeFeature.setGeometry(new ol.geom.Polygon([coords]));
-  // Settings
-  const canvasSize = 100;      // Icon pixel size (make bigger for larger fade)
-  const wedgeRadius = canvasSize * 0.5;
-  const angleOffset = Math.PI / 2;
-  const centerHeading = heading + angleOffset;
-  const wedgeRadians = fov;    // Use your chosen fov
-
-  // Draw gradient arc on canvas
-  const canvas = document.createElement('canvas');
-  canvas.width = canvasSize;
-  canvas.height = canvasSize;
-  const ctx = canvas.getContext('2d');
-  ctx.translate(canvasSize / 2, canvasSize / 2);
-
-  // Radial or angular gradient
-  const grad = ctx.createRadialGradient(0,0,0,0,0,wedgeRadius);
-  grad.addColorStop(0, 'rgba(255,153,0,0.26)');
-  grad.addColorStop(1, 'rgba(255,153,0,0.0)');
-
-  ctx.fillStyle = grad;
-  ctx.beginPath();
-  ctx.moveTo(0, 0);
-  ctx.arc(
-    0, 0, 
-    wedgeRadius, 
-    centerHeading - wedgeRadians/2, 
-    centerHeading + wedgeRadians/2,
-    false
-  );
-  ctx.closePath();
-  ctx.fill();
-
-  wedgeFeature.setGeometry(new ol.geom.Point(pos));
-  wedgeFeature.setStyle(
-    new ol.style.Style({
-      image: new ol.style.Icon({
-        img: canvas,
-        imgSize: [canvasSize, canvasSize],
-        anchor: [0.5, 0.5],
-        anchorXUnits: 'fraction',
-        anchorYUnits: 'fraction'
-      }),
-      zIndex: 9
-    })
-  );
+wedgeFeature.setStyle(
+  new ol.style.Style({
+    fill: new ol.style.Fill({ color: 'rgba(255,153,0,0.18)' }), // faded orange
+    stroke: null // No boundary
+  })
+);
+  
 }
 
 // Listen to device orientation: ensures heading north = wedge up
@@ -1289,6 +1249,7 @@ document.addEventListener('DOMContentLoaded', function() {
         bottomRightContainerDiv.appendChild(attributionControl);
 
     }
+
 
 
 
