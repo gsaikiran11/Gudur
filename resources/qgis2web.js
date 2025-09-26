@@ -450,11 +450,12 @@ var bottomRightContainerDiv = document.getElementById('bottom-right-container')
 
 //abstract
 
-// =============================
-// Geolocation + Compass Viewer Enhanced (matches image reference)
-// =============================
+
+      //============== Geolocate Viewer (matches provided reference) ==============
+
 let isTracking = false;
 
+// Add geolocate button to map controls
 const geolocateButton = document.createElement('button');
 geolocateButton.className = 'geolocate-button fa fa-map-marker';
 geolocateButton.title = 'Geolocalizza';
@@ -464,6 +465,7 @@ geolocateControl.className = 'ol-unselectable ol-control geolocate';
 geolocateControl.appendChild(geolocateButton);
 map.getTargetElement().appendChild(geolocateControl);
 
+// Create OL features
 const accuracyFeature = new ol.Feature();
 const positionFeature = new ol.Feature();
 const wedgeFeature = new ol.Feature();
@@ -473,13 +475,14 @@ const geolocateSource = new ol.source.Vector({
 });
 const geolocateLayer = new ol.layer.Vector({ source: geolocateSource });
 
+// Set up geolocation
 const geolocation = new ol.Geolocation({
   projection: map.getView().getProjection(),
   trackingOptions: { enableHighAccuracy: true }
 });
 geolocation.setTracking(true);
 
-// Style for the accuracy circle
+// Draw accuracy circle
 geolocation.on('change:accuracyGeometry', function () {
   accuracyFeature.setGeometry(geolocation.getAccuracyGeometry());
   accuracyFeature.setStyle(
@@ -490,59 +493,63 @@ geolocation.on('change:accuracyGeometry', function () {
   );
 });
 
-// Custom marker: blue dot with double rings (white inner, blue outer)
+// Google Maps-style double ring marker
 function doubleRingStyle() {
-  return new ol.style.Style({
-    image: new ol.style.Circle({
-      radius: 10,
-      fill: new ol.style.Fill({ color: '#3399CC' }),
-      stroke: new ol.style.Stroke({ color: '#fff', width: 7 }), // white ring
+  return [
+    new ol.style.Style({
+      image: new ol.style.Circle({
+        radius: 15,
+        fill: new ol.style.Fill({ color: 'rgba(0,0,0,0)' }),
+        stroke: new ol.style.Stroke({ color: '#3399CC', width: 4 }),
+      }),
     }),
-    // Outer blue ring drawn via second style (circle overlay)
-  });
-}
-function outerRingStyle() {
-  return new ol.style.Style({
-    image: new ol.style.Circle({
-      radius: 14,
-      fill: new ol.style.Fill({ color: 'rgba(0,0,0,0)' }),
-      stroke: new ol.style.Stroke({ color: '#3399CC', width: 2 }),
-    })
-  });
+    new ol.style.Style({
+      image: new ol.style.Circle({
+        radius: 10,
+        fill: new ol.style.Fill({ color: 'rgba(0,0,0,0)' }),
+        stroke: new ol.style.Stroke({ color: '#fff', width: 5 }),
+      })
+    }),
+    new ol.style.Style({
+      image: new ol.style.Circle({
+        radius: 7,
+        fill: new ol.style.Fill({ color: '#3399CC' })
+      })
+    }),
+  ];
 }
 
+// Place marker and update wedge on geolocation change
 geolocation.on('change:position', function () {
   const pos = geolocation.getPosition();
   positionFeature.setGeometry(pos ? new ol.geom.Point(pos) : null);
-  // Set both inner and outer ring styles
-  positionFeature.setStyle([outerRingStyle(), doubleRingStyle()]);
+  positionFeature.setStyle(doubleRingStyle());
   updateWedge();
 });
 
-// Wedge sector style and correct North orientation
+// Wedge (sector) style and orientation
 let heading = 0;
-let fov = Math.PI / 6; // wedge width: ~30 degrees
+let fov = Math.PI / 6; // ~30 degrees
 
 function updateWedge() {
   const pos = geolocation.getPosition();
   if (!pos) { wedgeFeature.setGeometry(null); return; }
-  const radius = 20; // wedge radius in meters
-  const coords = [];
- 
-  // To have north point up, we use angleOffset = 0
-  const centerHeading = heading; // no offset needed for "up is north"
+  const radius = 20; // meters
+  const coords = [pos];
+  // Fix direction: 0 deg device heading = north/up on map
+  const angleOffset = -Math.PI / 2;
+  const centerHeading = heading + angleOffset;
   const a1 = centerHeading - fov / 2;
   const a2 = centerHeading + fov / 2;
-
-  coords.push(pos);
-  for (let i = 0; i <= 20; i++) {
-    const angle = a1 + ((a2 - a1) * i) / 20;
+  for (let i = 0; i <= 40; i++) {
+    const angle = a1 + ((a2 - a1) * i) / 40;
     coords.push([
       pos[0] + radius * Math.cos(angle),
       pos[1] + radius * Math.sin(angle)
     ]);
   }
-  coords.push(pos);
+  coords.push(pos); // close sector
+
   wedgeFeature.setGeometry(new ol.geom.Polygon([coords]));
   wedgeFeature.setStyle(
     new ol.style.Style({
@@ -552,26 +559,27 @@ function updateWedge() {
   );
 }
 
-// Device orientation event: ensure north is up
+// Listen to device orientation: ensures heading north = wedge up
 if ('ondeviceorientationabsolute' in window) {
   window.addEventListener('deviceorientationabsolute', function (event) {
     if (event.alpha !== null) {
-      heading = ((360 - event.alpha) * Math.PI) / 180; // north points to "up"
+      heading = (event.alpha * Math.PI) / 180;
       updateWedge();
     }
   }, true);
 } else {
   window.addEventListener('deviceorientation', function (event) {
     if (event.webkitCompassHeading !== undefined) {
-      heading = ((360 - event.webkitCompassHeading) * Math.PI) / 180;
+      heading = (event.webkitCompassHeading * Math.PI) / 180;
       updateWedge();
     } else if (event.alpha !== null) {
-      heading = ((360 - event.alpha) * Math.PI) / 180;
+      heading = (event.alpha * Math.PI) / 180;
       updateWedge();
     }
   }, true);
 }
 
+// Geolocate layer toggle logic
 function handleGeolocate() {
   if (isTracking) {
     map.removeLayer(geolocateLayer);
@@ -586,7 +594,8 @@ function handleGeolocate() {
 geolocateButton.addEventListener('click', handleGeolocate);
 geolocateButton.addEventListener('touchstart', handleGeolocate);
 
-// =============================
+//============== End Geolocate Viewer ==============
+  
 
 
 //measurement
@@ -1228,6 +1237,7 @@ document.addEventListener('DOMContentLoaded', function() {
         bottomRightContainerDiv.appendChild(attributionControl);
 
     }
+
 
 
 
