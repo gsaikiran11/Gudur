@@ -500,14 +500,28 @@ function doubleRingStyle() {
       image: new ol.style.Circle({
         radius: 30,
         fill: new ol.style.Fill({ color: 'rgba(0,0,0,0)' }),
-        stroke: new ol.style.Stroke({ color: '#3399CC', width: 1 }),
+        stroke: new ol.style.Stroke({ color: '#3399CC', width: 2 }),
+      }),
+    }),
+	  new ol.style.Style({
+      image: new ol.style.Circle({
+        radius: 29,
+        fill: new ol.style.Fill({ color: 'rgba(0,0,0,0)' }),
+        stroke: new ol.style.Stroke({ color: '#fff', width: 1 }),
+      }),
+    }),
+	  new ol.style.Style({
+      image: new ol.style.Circle({
+        radius: 31,
+        fill: new ol.style.Fill({ color: 'rgba(0,0,0,0)' }),
+        stroke: new ol.style.Stroke({ color: '#fff', width: 1 }),
       }),
     }),
     new ol.style.Style({
       image: new ol.style.Circle({
-        radius: 20,
+        radius: 8,
         fill: new ol.style.Fill({ color: 'rgba(0,0,0,0)' }),
-        stroke: new ol.style.Stroke({ color: '#fff', width: 2 }),
+        stroke: new ol.style.Stroke({ color: '#fff', width: 1 }),
       })
     }),
     new ol.style.Style({
@@ -534,7 +548,9 @@ let fov = Math.PI / 6; // ~30 degrees
 function updateWedge() {
   const pos = geolocation.getPosition();
   if (!pos) { wedgeFeature.setGeometry(null); return; }
-  const radius = 20; // meters
+  const resolution = map.getView().getResolution(); // meters/pixel
+const wedgePixelLength = 28; // wedge length in pixels
+const radius = wedgePixelLength * resolution; // meters
   const coords = [pos];
   // Fix direction: 0 deg device heading = north/up on map
   const angleOffset = Math.PI / 2;
@@ -1237,6 +1253,7 @@ document.addEventListener('DOMContentLoaded', function() {
         bottomRightContainerDiv.appendChild(attributionControl);
 
     }
+
 
 
 
