@@ -548,6 +548,11 @@ let fov = Math.PI / 3; // ~60 degrees
 function updateWedge() {
   const pos = geolocation.getPosition();
   if (!pos) { wedgeFeature.setGeometry(null); return; }
+	function updateWedge() {
+const resolution = map.getView().getResolution(); // meters/pixel
+const wedgePixelLength = 40; // wedge length in pixels
+const radius = wedgePixelLength * resolution; // meters
+		const coords = [pos];
   
   // Fix direction: 0 deg device heading = north/up on map
  const angleOffset = Math.PI / 2;
@@ -1249,6 +1254,7 @@ document.addEventListener('DOMContentLoaded', function() {
         bottomRightContainerDiv.appendChild(attributionControl);
 
     }
+
 
 
 
