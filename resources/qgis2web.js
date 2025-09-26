@@ -498,35 +498,35 @@ function doubleRingStyle() {
   return [
     new ol.style.Style({
       image: new ol.style.Circle({
-        radius: 30,
+        radius: 15,
         fill: new ol.style.Fill({ color: 'rgba(0,0,0,0)' }),
         stroke: new ol.style.Stroke({ color: '#3399CC', width: 2 }),
       }),
     }),
 	  new ol.style.Style({
       image: new ol.style.Circle({
-        radius: 29,
+        radius: 14,
         fill: new ol.style.Fill({ color: 'rgba(0,0,0,0)' }),
         stroke: new ol.style.Stroke({ color: '#fff', width: 1 }),
       }),
     }),
 	  new ol.style.Style({
       image: new ol.style.Circle({
-        radius: 31,
+        radius: 16,
         fill: new ol.style.Fill({ color: 'rgba(0,0,0,0)' }),
         stroke: new ol.style.Stroke({ color: '#fff', width: 1 }),
       }),
     }),
     new ol.style.Style({
       image: new ol.style.Circle({
-        radius: 8,
+        radius: 4,
         fill: new ol.style.Fill({ color: 'rgba(0,0,0,0)' }),
         stroke: new ol.style.Stroke({ color: '#fff', width: 1 }),
       })
     }),
     new ol.style.Style({
       image: new ol.style.Circle({
-        radius: 7,
+        radius: 3,
         fill: new ol.style.Fill({ color: '#3399CC' })
       })
     }),
@@ -543,13 +543,13 @@ geolocation.on('change:position', function () {
 
 // Wedge (sector) style and orientation
 let heading = 0;
-let fov = Math.PI / 6; // ~30 degrees
+let fov = Math.PI / 3; // ~60 degrees
 
 function updateWedge() {
   const pos = geolocation.getPosition();
   if (!pos) { wedgeFeature.setGeometry(null); return; }
   const resolution = map.getView().getResolution(); // meters/pixel
-const wedgePixelLength = 28; // wedge length in pixels
+const wedgePixelLength = 13; // wedge length in pixels
 const radius = wedgePixelLength * resolution; // meters
   const coords = [pos];
   // Fix direction: 0 deg device heading = north/up on map
@@ -568,11 +568,48 @@ const radius = wedgePixelLength * resolution; // meters
 
   wedgeFeature.setGeometry(new ol.geom.Polygon([coords]));
   wedgeFeature.setStyle(
-    new ol.style.Style({
-      fill: new ol.style.Fill({ color: 'rgba(255,153,0,0.3)' }),
-      stroke: new ol.style.Stroke({ color: 'rgba(255,153,0,0.99)', width: 2 })
-    })
-  );
+  new ol.style.Style({
+    fill: new ol.style.Fill({
+      color: [
+        {
+          type: 'canvas',
+          canvasFunction: function(feature, resolution) {
+            const size = 64; // Size of the wedge icon
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+
+            // Make a radial gradient
+            const grad = ctx.createRadialGradient(
+              size / 2, size / 2, size / 6,
+              size / 2, size / 2, size / 2
+            );
+            grad.addColorStop(0, 'rgba(255,153,0,0.35)');
+            grad.addColorStop(1, 'rgba(255,153,0,0)');
+
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.moveTo(size / 2, size / 2);
+            ctx.arc(
+              size / 2,
+              size / 2,
+              size / 2,
+              -fov / 2,
+              fov / 2,
+              false
+            );
+            ctx.closePath();
+            ctx.fill();
+
+            return canvas;
+          }
+        }
+      ]
+    }),
+    stroke: null // No lines
+  })
+);
 }
 
 // Listen to device orientation: ensures heading north = wedge up
@@ -1253,6 +1290,7 @@ document.addEventListener('DOMContentLoaded', function() {
         bottomRightContainerDiv.appendChild(attributionControl);
 
     }
+
 
 
 
