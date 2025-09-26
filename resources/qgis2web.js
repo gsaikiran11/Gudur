@@ -550,18 +550,18 @@ function updateWedge() {
   if (!pos) { wedgeFeature.setGeometry(null); return; }
   
   // Fix direction: 0 deg device heading = north/up on map
-  const angleOffset = Math.PI / 2;
-  const centerHeading = heading + angleOffset;
-  const a1 = centerHeading - fov / 2;
-  const a2 = centerHeading + fov / 2;
-  for (let i = 0; i <= 40; i++) {
-    const angle = a1 + ((a2 - a1) * i) / 40;
-    coords.push([
-      pos[0] + radius * Math.cos(angle),
-      pos[1] + radius * Math.sin(angle)
-    ]);
-  }
-  coords.push(pos); // close sector
+ // const angleOffset = Math.PI / 2;
+//  const centerHeading = heading + angleOffset;
+ // const a1 = centerHeading - fov / 2;
+ // const a2 = centerHeading + fov / 2;
+  //for (let i = 0; i <= 40; i++) {
+  //  const angle = a1 + ((a2 - a1) * i) / 40;
+  //  coords.push([
+   //   pos[0] + radius * Math.cos(angle),
+    //  pos[1] + radius * Math.sin(angle)
+  //  ]);
+//  }
+//  coords.push(pos); // close sector
 
   wedgeFeature.setGeometry(new ol.geom.Polygon([coords]));
   // Settings
@@ -1290,6 +1290,7 @@ document.addEventListener('DOMContentLoaded', function() {
         bottomRightContainerDiv.appendChild(attributionControl);
 
     }
+
 
 
 
