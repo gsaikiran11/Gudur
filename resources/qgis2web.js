@@ -450,7 +450,9 @@ var bottomRightContainerDiv = document.getElementById('bottom-right-container')
 
 //abstract
 
-// Geolocation + Compass Viewer (Validated)
+// =============================
+// Geolocation + Compass Viewer Enhanced (matches image reference)
+// =============================
 let isTracking = false;
 
 const geolocateButton = document.createElement('button');
@@ -477,6 +479,7 @@ const geolocation = new ol.Geolocation({
 });
 geolocation.setTracking(true);
 
+// Style for the accuracy circle
 geolocation.on('change:accuracyGeometry', function () {
   accuracyFeature.setGeometry(geolocation.getAccuracyGeometry());
   accuracyFeature.setStyle(
@@ -487,33 +490,50 @@ geolocation.on('change:accuracyGeometry', function () {
   );
 });
 
+// Custom marker: blue dot with double rings (white inner, blue outer)
+function doubleRingStyle() {
+  return new ol.style.Style({
+    image: new ol.style.Circle({
+      radius: 10,
+      fill: new ol.style.Fill({ color: '#3399CC' }),
+      stroke: new ol.style.Stroke({ color: '#fff', width: 7 }), // white ring
+    }),
+    // Outer blue ring drawn via second style (circle overlay)
+  });
+}
+function outerRingStyle() {
+  return new ol.style.Style({
+    image: new ol.style.Circle({
+      radius: 14,
+      fill: new ol.style.Fill({ color: 'rgba(0,0,0,0)' }),
+      stroke: new ol.style.Stroke({ color: '#3399CC', width: 2 }),
+    })
+  });
+}
+
 geolocation.on('change:position', function () {
   const pos = geolocation.getPosition();
   positionFeature.setGeometry(pos ? new ol.geom.Point(pos) : null);
-  positionFeature.setStyle(
-    new ol.style.Style({
-      image: new ol.style.Circle({
-        radius: 8,
-        fill: new ol.style.Fill({ color: '#3399CC' }),
-        stroke: new ol.style.Stroke({ color: '#fff', width: 3 }),
-      }),
-    })
-  );
+  // Set both inner and outer ring styles
+  positionFeature.setStyle([outerRingStyle(), doubleRingStyle()]);
   updateWedge();
 });
 
+// Wedge sector style and correct North orientation
 let heading = 0;
-let fov = Math.PI / 6;
+let fov = Math.PI / 6; // wedge width: ~30 degrees
 
 function updateWedge() {
   const pos = geolocation.getPosition();
   if (!pos) { wedgeFeature.setGeometry(null); return; }
-  const radius = 20;
+  const radius = 20; // wedge radius in meters
   const coords = [];
-  const angleOffset = -Math.PI / 2;
-  const centerHeading = heading + angleOffset;
-  const a1 = centerHeading - fov / 2,
-        a2 = centerHeading + fov / 2;
+ 
+  // To have north point up, we use angleOffset = 0
+  const centerHeading = heading; // no offset needed for "up is north"
+  const a1 = centerHeading - fov / 2;
+  const a2 = centerHeading + fov / 2;
+
   coords.push(pos);
   for (let i = 0; i <= 20; i++) {
     const angle = a1 + ((a2 - a1) * i) / 20;
@@ -532,20 +552,21 @@ function updateWedge() {
   );
 }
 
+// Device orientation event: ensure north is up
 if ('ondeviceorientationabsolute' in window) {
   window.addEventListener('deviceorientationabsolute', function (event) {
     if (event.alpha !== null) {
-      heading = (event.alpha * Math.PI) / 180;
+      heading = ((360 - event.alpha) * Math.PI) / 180; // north points to "up"
       updateWedge();
     }
   }, true);
 } else {
   window.addEventListener('deviceorientation', function (event) {
     if (event.webkitCompassHeading !== undefined) {
-      heading = (event.webkitCompassHeading * Math.PI) / 180;
+      heading = ((360 - event.webkitCompassHeading) * Math.PI) / 180;
       updateWedge();
     } else if (event.alpha !== null) {
-      heading = (event.alpha * Math.PI) / 180;
+      heading = ((360 - event.alpha) * Math.PI) / 180;
       updateWedge();
     }
   }, true);
@@ -564,6 +585,9 @@ function handleGeolocate() {
 }
 geolocateButton.addEventListener('click', handleGeolocate);
 geolocateButton.addEventListener('touchstart', handleGeolocate);
+
+// =============================
+
 
 //measurement
 let measuring = false;
@@ -1204,6 +1228,7 @@ document.addEventListener('DOMContentLoaded', function() {
         bottomRightContainerDiv.appendChild(attributionControl);
 
     }
+
 
 
 
