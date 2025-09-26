@@ -498,16 +498,16 @@ function doubleRingStyle() {
   return [
     new ol.style.Style({
       image: new ol.style.Circle({
-        radius: 15,
+        radius: 30,
         fill: new ol.style.Fill({ color: 'rgba(0,0,0,0)' }),
-        stroke: new ol.style.Stroke({ color: '#3399CC', width: 4 }),
+        stroke: new ol.style.Stroke({ color: '#3399CC', width: 1 }),
       }),
     }),
     new ol.style.Style({
       image: new ol.style.Circle({
-        radius: 10,
+        radius: 20,
         fill: new ol.style.Fill({ color: 'rgba(0,0,0,0)' }),
-        stroke: new ol.style.Stroke({ color: '#fff', width: 5 }),
+        stroke: new ol.style.Stroke({ color: '#fff', width: 2 }),
       })
     }),
     new ol.style.Style({
@@ -537,7 +537,7 @@ function updateWedge() {
   const radius = 20; // meters
   const coords = [pos];
   // Fix direction: 0 deg device heading = north/up on map
-  const angleOffset = -Math.PI / 2;
+  const angleOffset = Math.PI / 2;
   const centerHeading = heading + angleOffset;
   const a1 = centerHeading - fov / 2;
   const a2 = centerHeading + fov / 2;
@@ -1237,6 +1237,7 @@ document.addEventListener('DOMContentLoaded', function() {
         bottomRightContainerDiv.appendChild(attributionControl);
 
     }
+
 
 
 
