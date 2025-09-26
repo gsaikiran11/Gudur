@@ -610,7 +610,6 @@ function updateWedge() {
     })
   );
 }
-}
 
 // Listen to device orientation: ensures heading north = wedge up
 if ('ondeviceorientationabsolute' in window) {
@@ -1290,6 +1289,7 @@ document.addEventListener('DOMContentLoaded', function() {
         bottomRightContainerDiv.appendChild(attributionControl);
 
     }
+
 
 
 
