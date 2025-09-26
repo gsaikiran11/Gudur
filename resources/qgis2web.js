@@ -542,8 +542,8 @@ geolocation.on('change:position', function () {
 });
 
 // Wedge (sector) style and orientation
-let heading = 0;
-let fov = Math.PI / 3; // ~60 degrees
+//let heading = 0;
+//let fov = Math.PI / 3; // ~60 degrees
 
 function updateWedge() {
   const pos = geolocation.getPosition();
@@ -1290,6 +1290,7 @@ document.addEventListener('DOMContentLoaded', function() {
         bottomRightContainerDiv.appendChild(attributionControl);
 
     }
+
 
 
 
