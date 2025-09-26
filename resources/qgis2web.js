@@ -451,68 +451,127 @@ var bottomRightContainerDiv = document.getElementById('bottom-right-container')
 //abstract
 
 
-//geolocate
+//--- Begin Geolocate and Compass View Block ---
 
-	let isTracking = false;
+let isTracking = false;
 
-	const geolocateButton = document.createElement('button');
-	geolocateButton.className = 'geolocate-button fa fa-map-marker';
-	geolocateButton.title = 'Geolocalizza';
+// Button & control
+const geolocateButton = document.createElement('button');
+geolocateButton.className = 'geolocate-button fa fa-map-marker';
+geolocateButton.title = 'Geolocalizza';
 
-	const geolocateControl = document.createElement('div');
-	geolocateControl.className = 'ol-unselectable ol-control geolocate';
-	geolocateControl.appendChild(geolocateButton);
-	map.getTargetElement().appendChild(geolocateControl);
+const geolocateControl = document.createElement('div');
+geolocateControl.className = 'ol-unselectable ol-control geolocate';
+geolocateControl.appendChild(geolocateButton);
+map.getTargetElement().appendChild(geolocateControl);
 
-	const accuracyFeature = new ol.Feature();
-	const positionFeature = new ol.Feature({
-	  style: new ol.style.Style({
-		image: new ol.style.Circle({
-		  radius: 6,
-		  fill: new ol.style.Fill({ color: '#3399CC' }),
-		  stroke: new ol.style.Stroke({ color: '#fff', width: 2 }),
-		}),
-	  }),
-	});
+// Features
+const accuracyFeature = new ol.Feature();
+const positionFeature = new ol.Feature();
+const wedgeFeature = new ol.Feature();
 
-  const geolocateOverlay = new ol.layer.Vector({
-	  source: new ol.source.Vector({
-		features: [accuracyFeature, positionFeature],
-	  }),
-	});
-	
-	const geolocation = new ol.Geolocation({
+const geolocateSource = new ol.source.Vector({
+  features: [accuracyFeature, wedgeFeature, positionFeature]
+});
+const geolocateLayer = new ol.layer.Vector({
+  source: geolocateSource
+});
+
+// Geolocation
+const geolocation = new ol.Geolocation({
   projection: map.getView().getProjection(),
   trackingOptions: { enableHighAccuracy: true }
 });
+geolocation.setTracking(true);
 
-	geolocation.on('change:accuracyGeometry', function () {
-	  accuracyFeature.setGeometry(geolocation.getAccuracyGeometry());
-	});
+geolocation.on('change:accuracyGeometry', function () {
+  accuracyFeature.setGeometry(geolocation.getAccuracyGeometry());
+  accuracyFeature.setStyle(
+    new ol.style.Style({
+      fill: new ol.style.Fill({ color: 'rgba(51,153,204,0.15)' }),
+      stroke: new ol.style.Stroke({ color: '#3399CC', width: 2 })
+    })
+  );
+});
 
-	geolocation.on('change:position', function () {
-	  const coords = geolocation.getPosition();
-	  positionFeature.setGeometry(coords ? new ol.geom.Point(coords) : null);
-	});
+geolocation.on('change:position', function () {
+  const pos = geolocation.getPosition();
+  positionFeature.setGeometry(pos ? new ol.geom.Point(pos) : null);
+  positionFeature.setStyle(
+    new ol.style.Style({
+      image: new ol.style.Circle({
+        radius: 8,
+        fill: new ol.style.Fill({ color: '#3399CC' }),
+        stroke: new ol.style.Stroke({ color: '#fff', width: 3 })
+      })
+    })
+  );
+  updateWedge();
+});
 
-	geolocation.setTracking(true);
+let heading = 0;
+let fov = Math.PI / 6; // Wedge (sector) width in radians
 
-	function handleGeolocate() {
-	  if (isTracking) {
-		map.removeLayer(geolocateOverlay);
-		isTracking = false;
-	  } else if (geolocation.getTracking()) {
-		map.addLayer(geolocateOverlay);
-		const pos = geolocation.getPosition();
-		if (pos) {
-		  map.getView().setCenter(pos);
-		}
-		isTracking = true;
-	  }
-	}
+function updateWedge() {
+  const pos = geolocation.getPosition();
+  if (!pos) {
+    wedgeFeature.setGeometry(null);
+    return;
+  }
+  const radius = 20; // meters
+  const coords = [pos];
+  const a1 = heading - fov / 2, a2 = heading + fov / 2;
+  for (let i = 0; i <= 20; i++) {
+    const angle = a1 + ((a2 - a1) * i) / 20;
+    coords.push([pos[0] + radius * Math.cos(angle), pos[1] + radius * Math.sin(angle)]);
+  }
+  coords.push(pos);
+  wedgeFeature.setGeometry(new ol.geom.Polygon([coords]));
+  wedgeFeature.setStyle(
+    new ol.style.Style({
+      fill: new ol.style.Fill({ color: 'rgba(255,153,0,0.3)' }),
+      stroke: new ol.style.Stroke({ color: 'rgba(255,153,0,0.99)', width: 2 })
+    })
+  );
+}
 
-	geolocateButton.addEventListener('click', handleGeolocate);
-	geolocateButton.addEventListener('touchstart', handleGeolocate);
+// Device orientation/compass
+if ('ondeviceorientationabsolute' in window) {
+  window.addEventListener('deviceorientationabsolute', function (event) {
+    if (event.alpha !== null) {
+      heading = ((360 - event.alpha) * Math.PI) / 180;
+      updateWedge();
+    }
+  }, true);
+} else {
+  window.addEventListener('deviceorientation', function (event) {
+    if (event.webkitCompassHeading !== undefined) {
+      heading = ((360 - event.webkitCompassHeading) * Math.PI) / 180;
+      updateWedge();
+    } else if (event.alpha !== null) {
+      heading = ((360 - event.alpha) * Math.PI) / 180;
+      updateWedge();
+    }
+  }, true);
+}
+
+// Geolocate on button press
+function handleGeolocate() {
+  if (isTracking) {
+    map.removeLayer(geolocateLayer);
+    isTracking = false;
+  } else if (geolocation.getTracking()) {
+    map.addLayer(geolocateLayer);
+    const pos = geolocation.getPosition();
+    if (pos) map.getView().setCenter(pos);
+    isTracking = true;
+  }
+}
+geolocateButton.addEventListener('click', handleGeolocate);
+geolocateButton.addEventListener('touchstart', handleGeolocate);
+
+//--- End Geolocate and Compass View Block ---
+
 
 
 //measurement
@@ -1154,3 +1213,4 @@ document.addEventListener('DOMContentLoaded', function() {
         bottomRightContainerDiv.appendChild(attributionControl);
 
     }
+
