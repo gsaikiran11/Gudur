@@ -482,8 +482,9 @@ var bottomRightContainerDiv = document.getElementById('bottom-right-container')
 	});
 	
 	const geolocation = new ol.Geolocation({
-	  projection: map.getView().getProjection(),
-	});
+  projection: map.getView().getProjection(),
+  trackingOptions: { enableHighAccuracy: true }
+});
 
 	geolocation.on('change:accuracyGeometry', function () {
 	  accuracyFeature.setGeometry(geolocation.getAccuracyGeometry());
@@ -1151,4 +1152,5 @@ document.addEventListener('DOMContentLoaded', function() {
     var attributionControl = document.getElementsByClassName('bottom-attribution')[0];
     if (attributionControl) {
         bottomRightContainerDiv.appendChild(attributionControl);
+
     }
