@@ -498,21 +498,21 @@ function doubleRingStyle() {
   return [
     new ol.style.Style({
       image: new ol.style.Circle({
-        radius: 15,
+        radius: 20,
         fill: new ol.style.Fill({ color: 'rgba(0,0,0,0)' }),
         stroke: new ol.style.Stroke({ color: '#3399CC', width: 2 }),
       }),
     }),
 	  new ol.style.Style({
       image: new ol.style.Circle({
-        radius: 14,
+        radius: 19,
         fill: new ol.style.Fill({ color: 'rgba(0,0,0,0)' }),
         stroke: new ol.style.Stroke({ color: '#fff', width: 1 }),
       }),
     }),
 	  new ol.style.Style({
       image: new ol.style.Circle({
-        radius: 16,
+        radius: 21,
         fill: new ol.style.Fill({ color: 'rgba(0,0,0,0)' }),
         stroke: new ol.style.Stroke({ color: '#fff', width: 1 }),
       }),
@@ -548,10 +548,7 @@ let fov = Math.PI / 3; // ~60 degrees
 function updateWedge() {
   const pos = geolocation.getPosition();
   if (!pos) { wedgeFeature.setGeometry(null); return; }
-  const resolution = map.getView().getResolution(); // meters/pixel
-const wedgePixelLength = 13; // wedge length in pixels
-const radius = wedgePixelLength * resolution; // meters
-  const coords = [pos];
+  
   // Fix direction: 0 deg device heading = north/up on map
   const angleOffset = Math.PI / 2;
   const centerHeading = heading + angleOffset;
@@ -567,49 +564,52 @@ const radius = wedgePixelLength * resolution; // meters
   coords.push(pos); // close sector
 
   wedgeFeature.setGeometry(new ol.geom.Polygon([coords]));
+  // Settings
+  const canvasSize = 100;      // Icon pixel size (make bigger for larger fade)
+  const wedgeRadius = canvasSize * 0.5;
+  const angleOffset = Math.PI / 2;
+  const centerHeading = heading + angleOffset;
+  const wedgeRadians = fov;    // Use your chosen fov
+
+  // Draw gradient arc on canvas
+  const canvas = document.createElement('canvas');
+  canvas.width = canvasSize;
+  canvas.height = canvasSize;
+  const ctx = canvas.getContext('2d');
+  ctx.translate(canvasSize / 2, canvasSize / 2);
+
+  // Radial or angular gradient
+  const grad = ctx.createRadialGradient(0,0,0,0,0,wedgeRadius);
+  grad.addColorStop(0, 'rgba(255,153,0,0.26)');
+  grad.addColorStop(1, 'rgba(255,153,0,0.0)');
+
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.arc(
+    0, 0, 
+    wedgeRadius, 
+    centerHeading - wedgeRadians/2, 
+    centerHeading + wedgeRadians/2,
+    false
+  );
+  ctx.closePath();
+  ctx.fill();
+
+  wedgeFeature.setGeometry(new ol.geom.Point(pos));
   wedgeFeature.setStyle(
-  new ol.style.Style({
-    fill: new ol.style.Fill({
-      color: [
-        {
-          type: 'canvas',
-          canvasFunction: function(feature, resolution) {
-            const size = 64; // Size of the wedge icon
-            const canvas = document.createElement('canvas');
-            canvas.width = size;
-            canvas.height = size;
-            const ctx = canvas.getContext('2d');
-
-            // Make a radial gradient
-            const grad = ctx.createRadialGradient(
-              size / 2, size / 2, size / 6,
-              size / 2, size / 2, size / 2
-            );
-            grad.addColorStop(0, 'rgba(255,153,0,0.35)');
-            grad.addColorStop(1, 'rgba(255,153,0,0)');
-
-            ctx.fillStyle = grad;
-            ctx.beginPath();
-            ctx.moveTo(size / 2, size / 2);
-            ctx.arc(
-              size / 2,
-              size / 2,
-              size / 2,
-              -fov / 2,
-              fov / 2,
-              false
-            );
-            ctx.closePath();
-            ctx.fill();
-
-            return canvas;
-          }
-        }
-      ]
-    }),
-    stroke: null // No lines
-  })
-);
+    new ol.style.Style({
+      image: new ol.style.Icon({
+        img: canvas,
+        imgSize: [canvasSize, canvasSize],
+        anchor: [0.5, 0.5],
+        anchorXUnits: 'fraction',
+        anchorYUnits: 'fraction'
+      }),
+      zIndex: 9
+    })
+  );
+}
 }
 
 // Listen to device orientation: ensures heading north = wedge up
@@ -1290,6 +1290,7 @@ document.addEventListener('DOMContentLoaded', function() {
         bottomRightContainerDiv.appendChild(attributionControl);
 
     }
+
 
 
 
