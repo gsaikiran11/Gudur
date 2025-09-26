@@ -555,7 +555,7 @@ const wedgePixelLength = 18; // wedge length in pixels
 const radius = wedgePixelLength * resolution; // meters
   const coords = [pos];
   // Fix direction: 0 deg device heading = north/up on map
-  const angleOffset = -Math.PI / 2;
+  const angleOffset = Math.PI / 2;
   const centerHeading = heading + angleOffset;
   const a1 = centerHeading - fov / 2;
   const a2 = centerHeading + fov / 2;
@@ -572,7 +572,7 @@ const radius = wedgePixelLength * resolution; // meters
   wedgeFeature.setStyle(
     new ol.style.Style({
       fill: new ol.style.Fill({ color: 'rgba(255,153,0,0.3)' }),
-      stroke: new ol.style.Stroke({ color: 'rgba(255,153,0,0.99)', width: 2 })
+      stroke: new ol.style.Stroke({ color: 'rgba(255,153,0,0.99)', width: 0 })
     })
   );
 }
@@ -1254,6 +1254,7 @@ document.addEventListener('DOMContentLoaded', function() {
         bottomRightContainerDiv.appendChild(attributionControl);
 
     }
+
 
 
 
