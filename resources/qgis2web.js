@@ -451,7 +451,8 @@ var bottomRightContainerDiv = document.getElementById('bottom-right-container')
 //abstract
 
 
-      //============== Geolocate Viewer (matches provided reference) ==============
+
+  //============== Geolocate Viewer (matches provided reference) ==============
 
 let isTracking = false;
 
@@ -508,14 +509,14 @@ function doubleRingStyle() {
         radius: 19,
         fill: new ol.style.Fill({ color: 'rgba(0,0,0,0)' }),
         stroke: new ol.style.Stroke({ color: '#fff', width: 1 }),
-      }),
+      })
     }),
 	  new ol.style.Style({
       image: new ol.style.Circle({
         radius: 21,
         fill: new ol.style.Fill({ color: 'rgba(0,0,0,0)' }),
         stroke: new ol.style.Stroke({ color: '#fff', width: 1 }),
-      }),
+      })
     }),
     new ol.style.Style({
       image: new ol.style.Circle({
@@ -543,37 +544,37 @@ geolocation.on('change:position', function () {
 
 // Wedge (sector) style and orientation
 let heading = 0;
-let fov = Math.PI / 3; // ~60 degrees
+let fov = Math.PI / 3; // ~30 degrees
 
 function updateWedge() {
   const pos = geolocation.getPosition();
   if (!pos) { wedgeFeature.setGeometry(null); return; }
-	function updateWedge() {
-const resolution = map.getView().getResolution(); // meters/pixel
-const wedgePixelLength = 40; // wedge length in pixels
+  // const radius = 20; // meters
+	const resolution = map.getView().getResolution(); // meters/pixel
+const wedgePixelLength = 18; // wedge length in pixels
 const radius = wedgePixelLength * resolution; // meters
-		const coords = [pos];
-  
+  const coords = [pos];
   // Fix direction: 0 deg device heading = north/up on map
- const angleOffset = Math.PI / 2;
- const centerHeading = heading + angleOffset;
- const a1 = centerHeading - fov / 2;
- const a2 = centerHeading + fov / 2;
+  const angleOffset = -Math.PI / 2;
+  const centerHeading = heading + angleOffset;
+  const a1 = centerHeading - fov / 2;
+  const a2 = centerHeading + fov / 2;
   for (let i = 0; i <= 40; i++) {
-  const angle = a1 + ((a2 - a1) * i) / 40;
-coords.push([
-    pos[0] + radius * Math.cos(angle),
- pos[1] + radius * Math.sin(angle)
-   ]);
+    const angle = a1 + ((a2 - a1) * i) / 40;
+    coords.push([
+      pos[0] + radius * Math.cos(angle),
+      pos[1] + radius * Math.sin(angle)
+    ]);
   }
- coords.push(pos); // close sector
-wedgeFeature.setStyle(
-  new ol.style.Style({
-    fill: new ol.style.Fill({ color: 'rgba(255,153,0,0.18)' }), // faded orange
-    stroke: null // No boundary
-  })
-);
-  
+  coords.push(pos); // close sector
+
+  wedgeFeature.setGeometry(new ol.geom.Polygon([coords]));
+  wedgeFeature.setStyle(
+    new ol.style.Style({
+      fill: new ol.style.Fill({ color: 'rgba(255,153,0,0.3)' }),
+      stroke: new ol.style.Stroke({ color: 'rgba(255,153,0,0.99)', width: 2 })
+    })
+  );
 }
 
 // Listen to device orientation: ensures heading north = wedge up
@@ -612,7 +613,6 @@ geolocateButton.addEventListener('click', handleGeolocate);
 geolocateButton.addEventListener('touchstart', handleGeolocate);
 
 //============== End Geolocate Viewer ==============
-  
 
 
 //measurement
@@ -1254,6 +1254,7 @@ document.addEventListener('DOMContentLoaded', function() {
         bottomRightContainerDiv.appendChild(attributionControl);
 
     }
+
 
 
 
