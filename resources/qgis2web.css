@@ -224,19 +224,6 @@ td video {
     margin-left: 8px;
 }
 
-
-/* measurement */
-.measure-control {
-	position: relative;
-    float: left;
-    top: unset !important;
-    left: unset !important;
-    margin-top: 8px;
-    margin-left: 8px;
-	display: flex;
-}
-
-
  .geolocate {
  position: relative !important;
  float: left;
@@ -503,4 +490,5 @@ button[style*="28a745"] {
   color: white !important;
   border-color: #1e7e34 !important;
 }
+
 
