@@ -614,8 +614,6 @@ geolocateButton.addEventListener('touchstart', handleGeolocate);
 
 //============== End Geolocate Viewer ==============
 
-
-//-------------------------------------------------------------------------------------------------------------------
 // ===================================================
 // 📏 Measure Tool — FULLY CLEAN DEACTIVATION
 // ===================================================
@@ -886,13 +884,7 @@ typeSelect.onchange = unitSelect.onchange = function () {
 // ---------- ADD CONTROL ----------
 topLeftContainerDiv.appendChild(measureCtrl);
 
-
 //-------------------------------------------------------------------------------------------------------------------
-// ---------- ADD CONTROL ----------
-topLeftContainerDiv.appendChild(measureCtrl);
-
-//geocoder
-
   //Layer to represent the point of the geocoded address
   var geocoderLayer = new ol.layer.Vector({
       source: new ol.source.Vector(),
@@ -1167,6 +1159,7 @@ document.addEventListener('DOMContentLoaded', function() {
         bottomRightContainerDiv.appendChild(attributionControl);
 
     }
+
 
 
 
