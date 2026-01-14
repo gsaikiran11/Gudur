@@ -616,9 +616,8 @@ geolocateButton.addEventListener('touchstart', handleGeolocate);
 
 
 //-------------------------------------------------------------------------------------------------------------------
-
 // ===================================================
-// 📏 Measure Tool — LIVE, SNAP, AREA ACRES ONLY
+// 📏 Measure Tool — FULLY CLEAN DEACTIVATION
 // ===================================================
 
 var measureActive = false;
@@ -627,6 +626,8 @@ var sketch = null;
 var snapEnabled = false;
 var snapList = [];
 var listenerKey = null;
+var originalInteractions = [];
+var selectInteractions = [];
 
 // ---------- UI ----------
 var measureBtn = document.createElement('button');
@@ -673,18 +674,22 @@ snapBtn.innerHTML='🧲 OFF';
 snapBtn.style.marginTop='4px';
 snapBtn.style.width='100%';
 
-panel.append(typeSelect,unitSelect,snapBtn);
+// undo
+var undoBtn = document.createElement('button');
+undoBtn.innerHTML='↶ Undo';
+undoBtn.style.marginTop='4px';
+undoBtn.style.width='100%';
+undoBtn.style.display='none';
+
+panel.append(typeSelect, unitSelect, snapBtn, undoBtn);
 measureCtrl.appendChild(panel);
 
-// 🔥 FIX: Initialize unit options for default "Length" mode
+// Initialize unit options
 function updateUnitOptions() {
-  // Reset all options
   Array.from(unitSelect.options).forEach(function (opt) {
     opt.disabled = false;
     opt.style.display = '';
   });
-
-  // If LENGTH mode → hide/disable area-only units
   if (typeSelect.value === 'LineString') {
     Array.from(unitSelect.options).forEach(function (opt) {
       if (opt.value === 'acres' || opt.value === 'hectares') {
@@ -692,29 +697,21 @@ function updateUnitOptions() {
         opt.style.display = 'none';
       }
     });
-    // Force metric if area unit was selected
     if (unitSelect.value === 'acres' || unitSelect.value === 'hectares') {
       unitSelect.value = 'metric';
     }
   }
 }
-
-// ✅ Apply initial state
 updateUnitOptions();
 
 // ---------- LAYER ----------
 var measureSource = new ol.source.Vector();
-
 var measureLayer = new ol.layer.Vector({
   source: measureSource,
   zIndex: 1000,
   style: new ol.style.Style({
-    stroke: new ol.style.Stroke({
-      color:'#007bff', width:3, lineDash:[6,4]
-    }),
-    fill: new ol.style.Fill({
-      color:'rgba(0,123,255,0.2)'
-    })
+    stroke: new ol.style.Stroke({color:'#007bff', width:3, lineDash:[6,4]}),
+    fill: new ol.style.Fill({color:'rgba(0,123,255,0.2)'})
   })
 });
 map.addLayer(measureLayer);
@@ -722,7 +719,6 @@ map.addLayer(measureLayer);
 // ---------- TOOLTIP ----------
 var tooltipEl = document.createElement('div');
 tooltipEl.className = 'ol-tooltip';
-
 var tooltipOverlay = new ol.Overlay({
   element: tooltipEl,
   offset: [0,-15],
@@ -732,44 +728,65 @@ map.addOverlay(tooltipOverlay);
 
 // ---------- FORMAT ----------
 function formatLength(m,u){
-  if(u==='imperial'){
-    var ft=m*3.28084;
-    return ft>5280?(ft/5280).toFixed(2)+' mi':ft.toFixed(2)+' ft';
-  }
+  if(u==='imperial'){ var ft=m*3.28084; return ft>5280?(ft/5280).toFixed(2)+' mi':ft.toFixed(2)+' ft'; }
   return m>1000?(m/1000).toFixed(2)+' km':m.toFixed(2)+' m';
 }
-
 function formatArea(a,u){
-  if(u==='imperial'){
-    var ft2=a*10.7639;
-    return ft2>27878400?(ft2/27878400).toFixed(3)+' mi²':ft2.toFixed(2)+' ft²';
-  }
+  if(u==='imperial'){ var ft2=a*10.7639; return ft2>27878400?(ft2/27878400).toFixed(3)+' mi²':ft2.toFixed(2)+' ft²'; }
   if(u==='hectares') return (a/10000).toFixed(3)+' ha';
   if(u==='acres') return (a/4046.8564224).toFixed(3)+' ac';
   return a>1e6?(a/1e6).toFixed(3)+' km²':a.toFixed(2)+' m²';
 }
 
+// 🔥 FORCEFULLY CLEANUP ALL MEASURE PROCESSES
+function cleanupMeasure() {
+  // 1. Remove draw interaction
+  if (draw) {
+    map.removeInteraction(draw);
+    draw = null;
+  }
+  
+  // 2. Clear active sketch listeners
+  if (listenerKey) {
+    ol.Observable.unByKey(listenerKey);
+    listenerKey = null;
+  }
+  sketch = null;
+  
+  // 3. Hide tooltip
+  tooltipEl.className = 'ol-tooltip';
+  tooltipOverlay.setPosition(undefined);
+  
+  // 4. Hide undo button
+  undoBtn.style.display = 'none';
+  
+  // 5. Clear measure source
+  measureSource.clear();
+  
+  // 6. Disable snap
+  disableSnap();
+}
+
 // ---------- DRAW ----------
 function addDraw(){
-  removeDraw();
+  cleanupMeasure(); // Clean previous state first
 
   draw = new ol.interaction.Draw({
     source: measureSource,
-    type: typeSelect.value
+    type: typeSelect.value,
+    stopClick: true
   });
 
   draw.on('drawstart', function(e){
     sketch = e.feature;
+    undoBtn.style.display = 'block';
 
     listenerKey = sketch.getGeometry().on('change', function(evt){
-      var geom = evt.target;
-      var output='', coord;
-
+      var geom = evt.target, output='', coord;
       if(geom instanceof ol.geom.LineString){
         output = formatLength(geom.getLength(), unitSelect.value);
         coord = geom.getLastCoordinate();
       }
-
       if(geom instanceof ol.geom.Polygon){
         var coords = geom.getCoordinates()[0];
         if(coords.length > 2){
@@ -781,7 +798,6 @@ function addDraw(){
           coord = line.getLastCoordinate();
         }
       }
-
       tooltipEl.innerHTML = output;
       tooltipOverlay.setPosition(coord);
     });
@@ -789,12 +805,15 @@ function addDraw(){
 
   draw.on('drawend', function(){
     tooltipEl.className = 'ol-tooltip ol-tooltip-static';
-    ol.Observable.unByKey(listenerKey);
-    sketch = null;
   });
 
   map.addInteraction(draw);
 }
+
+// ---------- UNDO ----------
+undoBtn.onclick = function(){
+  if (draw && sketch) draw.removeLastPoint();
+};
 
 // ---------- SNAP ----------
 function enableSnap(){
@@ -808,26 +827,41 @@ function enableSnap(){
     }
   });
 }
-
 function disableSnap(){
   snapList.forEach(function(s){ map.removeInteraction(s); });
-  snapList=[];
+  snapList = [];
 }
 
-// ---------- EVENTS ----------
+// ---------- MAIN EVENTS ----------
 measureBtn.onclick = function(){
   measureActive = !measureActive;
   panel.style.display = measureActive?'block':'none';
 
   if(measureActive){
+    // DISABLE SELECT INTERACTIONS
+    map.getInteractions().forEach(function(interaction) {
+      if (interaction instanceof ol.interaction.Select || 
+          interaction instanceof ol.interaction.Pointer) {
+        originalInteractions.push(interaction);
+        map.removeInteraction(interaction);
+        selectInteractions.push(interaction);
+      }
+    });
+
     addDraw();
     if(snapEnabled) enableSnap();
     measureBtn.style.background='#007bff';
   } else {
-    removeDraw();
-    disableSnap();
-    measureSource.clear();
-    tooltipOverlay.setPosition(undefined);
+    // 🔥 FORCEFULLY END ALL MEASURE PROCESSES + RESTORE
+    cleanupMeasure();
+    
+    // RESTORE SELECT INTERACTIONS
+    selectInteractions.forEach(function(interaction) {
+      map.addInteraction(interaction);
+    });
+    selectInteractions = [];
+    originalInteractions = [];
+    
     measureBtn.style.background='';
   }
 };
@@ -835,37 +869,19 @@ measureBtn.onclick = function(){
 snapBtn.onclick = function(){
   snapEnabled = !snapEnabled;
   snapBtn.innerHTML = snapEnabled?'🧲 ON':'🧲 OFF';
-  snapEnabled?enableSnap():disableSnap();
+  if(measureActive && snapEnabled) enableSnap();
+  else disableSnap();
 };
 
 // ---------- UNIT / TYPE CHANGE ----------
-typeSelect.onchange = function () {
-  updateUnitOptions(); // ✅ Use shared function
-  
-  // Restart drawing safely
+typeSelect.onchange = unitSelect.onchange = function () {
+  updateUnitOptions();
   if (measureActive) {
-    measureSource.clear();
+    cleanupMeasure();
     addDraw();
-    if (snapEnabled) {
-      enableSnap();
-    }
+    if (snapEnabled) enableSnap();
   }
 };
-
-unitSelect.onchange = function () {
-  if (measureActive) {
-    measureSource.clear();
-    addDraw();
-    if (snapEnabled) {
-      enableSnap();
-    }
-  }
-};
-
-function removeDraw(){
-  if(draw) map.removeInteraction(draw);
-  draw = null;
-}
 
 // ---------- ADD CONTROL ----------
 topLeftContainerDiv.appendChild(measureCtrl);
@@ -1151,6 +1167,7 @@ document.addEventListener('DOMContentLoaded', function() {
         bottomRightContainerDiv.appendChild(attributionControl);
 
     }
+
 
 
 
