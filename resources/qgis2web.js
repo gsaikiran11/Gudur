@@ -867,7 +867,11 @@ function removeDraw(){
   draw = null;
 }
 
-//-------------------------------------------------------------------------------
+// ---------- ADD CONTROL ----------
+topLeftContainerDiv.appendChild(measureCtrl);
+
+
+//-------------------------------------------------------------------------------------------------------------------
 // ---------- ADD CONTROL ----------
 topLeftContainerDiv.appendChild(measureCtrl);
 
@@ -1147,6 +1151,7 @@ document.addEventListener('DOMContentLoaded', function() {
         bottomRightContainerDiv.appendChild(attributionControl);
 
     }
+
 
 
 
