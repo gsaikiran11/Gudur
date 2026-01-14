@@ -615,368 +615,261 @@ geolocateButton.addEventListener('touchstart', handleGeolocate);
 //============== End Geolocate Viewer ==============
 
 
-//measurement
-let measuring = false;
+//-------------------------------------------------------------------------------------------------------------------
 
-	const measureButton = document.createElement('button');
-	measureButton.className = 'measure-button fas fa-ruler';
-	measureButton.title = 'Measure';
+// ===================================================
+// 📏 Measure Tool — LIVE, SNAP, AREA ACRES ONLY
+// ===================================================
 
-	const measureControl = document.createElement('div');
-	measureControl.className = 'ol-unselectable ol-control measure-control';
-	measureControl.appendChild(measureButton);
-	map.getTargetElement().appendChild(measureControl);
+var measureActive = false;
+var draw = null;
+var sketch = null;
+var snapEnabled = false;
+var snapList = [];
+var listenerKey = null;
 
-	// Event handler
-	function handleMeasure() {
-	  if (!measuring) {
-		selectLabel.style.display = "";
-		map.addInteraction(draw);
-		createHelpTooltip();
-		createMeasureTooltip();
-		measuring = true;
-	  } else {
-		selectLabel.style.display = "none";
-		map.removeInteraction(draw);
-		map.removeOverlay(helpTooltip);
-		map.removeOverlay(measureTooltip);
-		const staticTooltips = document.getElementsByClassName("tooltip-static");
-		while (staticTooltips.length > 0) {
-		  staticTooltips[0].parentNode.removeChild(staticTooltips[0]);
-		}
-		measureLayer.getSource().clear();
-		sketch = null;
-		measuring = false;
-	  }
-	}
+// ---------- UI ----------
+var measureBtn = document.createElement('button');
+measureBtn.innerHTML = '📏';
+measureBtn.title = 'Measure';
 
-	measureButton.addEventListener('click', handleMeasure);
-	measureButton.addEventListener('touchstart', handleMeasure);
+var measureCtrl = document.createElement('div');
+measureCtrl.className = 'ol-control ol-unselectable measure-control';
+measureCtrl.appendChild(measureBtn);
 
-    map.on('pointermove', function(evt) {
-        if (evt.dragging) {
-            return;
-        }
-        if (measuring) {
-            /** @type {string} */
-            var helpMsg = 'Click to start drawing';
-            if (sketch) {
-                var geom = (sketch.getGeometry());
-                if (geom instanceof ol.geom.Polygon) {
-                    helpMsg = continuePolygonMsg;
-                } else if (geom instanceof ol.geom.LineString) {
-                    helpMsg = continueLineMsg;
-                }
-            }
-            helpTooltipElement.innerHTML = helpMsg;
-            helpTooltip.setPosition(evt.coordinate);
-        }
-    });
-    
+// panel
+var panel = document.createElement('div');
+panel.style.display = 'none';
+panel.style.background = '#fff';
+panel.style.padding = '6px';
+panel.style.borderRadius = '4px';
+panel.style.fontSize = '12px';
 
-    var selectLabel = document.createElement("label");
-    selectLabel.innerHTML = "&nbsp;Measure:&nbsp;";
+// type
+var typeSelect = document.createElement('select');
+['LineString','Polygon'].forEach(function(t){
+  var o=document.createElement('option');
+  o.value=t;
+  o.text=(t==='LineString')?'Length':'Area';
+  typeSelect.appendChild(o);
+});
 
-    var typeSelect = document.createElement("select");
-    typeSelect.id = "type";
+// units
+var unitSelect = document.createElement('select');
+[
+  {v:'metric',t:'Metric'},
+  {v:'hectares',t:'Hectares'},
+  {v:'acres',t:'Acres'},
+  {v:'imperial',t:'Imperial'}
+].forEach(function(u){
+  var o=document.createElement('option');
+  o.value=u.v; o.text=u.t;
+  unitSelect.appendChild(o);
+});
 
-    var measurementOption = [
-        { value: "LineString", description: "Length" },
-        { value: "Polygon", description: "Area" }
-        ];
-    measurementOption.forEach(function (option) {
-        var optionElement = document.createElement("option");
-        optionElement.value = option.value;
-        optionElement.text = option.description;
-        typeSelect.appendChild(optionElement);
-    });
+// snap
+var snapBtn = document.createElement('button');
+snapBtn.innerHTML='🧲 OFF';
+snapBtn.style.marginTop='4px';
+snapBtn.style.width='100%';
 
-    selectLabel.appendChild(typeSelect);
-    measureControl.appendChild(selectLabel);
+panel.append(typeSelect,unitSelect,snapBtn);
+measureCtrl.appendChild(panel);
 
-    selectLabel.style.display = "none";
-	/**
-	 * Currently drawn feature.
-	 * @type {ol.Feature}
-	 */
+// 🔥 FIX: Initialize unit options for default "Length" mode
+function updateUnitOptions() {
+  // Reset all options
+  Array.from(unitSelect.options).forEach(function (opt) {
+    opt.disabled = false;
+    opt.style.display = '';
+  });
 
-	/**
-	 * The help tooltip element.
-	 * @type {Element}
-	 */
-	var helpTooltipElement;
-
-
-	/**
-	 * Overlay to show the help messages.
-	 * @type {ol.Overlay}
-	 */
-	var helpTooltip;
-
-
-	/**
-	 * The measure tooltip element.
-	 * @type {Element}
-	 */
-	var measureTooltipElement;
-
-
-	/**
-	 * Overlay to show the measurement.
-	 * @type {ol.Overlay}
-	 */
-	var measureTooltip;
-
-
-	/**
-	 * Message to show when the user is drawing a line.
-	 * @type {string}
-	 */
-	var continueLineMsg = 'Click to continue drawing the line';
-
-
-
-	/**
-	 * Message to show when the user is drawing a polygon.
-	 * @type {string}
-	 */
-	var continuePolygonMsg = "1click continue, 2click close";
-
-
-	var typeSelect = document.getElementById("type");
-	var typeSelectForm = document.getElementById("form_measure");
-
-	typeSelect.onchange = function (e) {		  
-	  map.removeInteraction(draw);
-	  addInteraction();
-	  map.addInteraction(draw);		  
-	};
-
-	var measureLineStyle = new ol.style.Style({
-	  stroke: new ol.style.Stroke({ 
-		color: "rgba(0, 0, 255)", //blu
-		lineDash: [10, 10],
-		width: 4
-	  }),
-	  image: new ol.style.Circle({
-		radius: 6,
-		stroke: new ol.style.Stroke({
-		  color: "rgba(255, 255, 255)", 
-		  width: 1
-		}),
-	  })
-	});
-
-	var measureLineStyle2 = new ol.style.Style({	  
-		stroke: new ol.style.Stroke({
-			color: "rgba(255, 255, 255)", 
-			lineDash: [10, 10],
-			width: 2
-		  }),
-	  image: new ol.style.Circle({
-		radius: 5,
-		stroke: new ol.style.Stroke({
-		  color: "rgba(0, 0, 255)", 
-		  width: 1
-		}),
-			  fill: new ol.style.Fill({
-		  color: "rgba(255, 204, 51, 0.4)", 
-		}),
-		  })
-	});
-
-	var labelStyle = new ol.style.Style({
-	  text: new ol.style.Text({
-		font: "14px Calibri,sans-serif",
-		fill: new ol.style.Fill({
-		  color: "rgba(0, 0, 0, 1)"
-		}),
-		stroke: new ol.style.Stroke({
-		  color: "rgba(255, 255, 255, 1)",
-		  width: 3
-		})
-	  })
-	});
-
-	var labelStyleCache = [];
-
-	var styleFunction = function (feature, type) {
-	  var styles = [measureLineStyle, measureLineStyle2];
-	  var geometry = feature.getGeometry();
-	  var type = geometry.getType();
-	  var lineString;
-	  if (!type || type === type) {
-		if (type === "Polygon") {
-		  lineString = new ol.geom.LineString(geometry.getCoordinates()[0]);
-		} else if (type === "LineString") {
-		  lineString = geometry;
-		}
-	  }
-	  if (lineString) {
-		var count = 0;
-		lineString.forEachSegment(function (a, b) {
-		  var segment = new ol.geom.LineString([a, b]);
-		  var label = formatLength(segment);
-		  if (labelStyleCache.length - 1 < count) {
-			labelStyleCache.push(labelStyle.clone());
-		  }
-		  labelStyleCache[count].setGeometry(segment);
-		  labelStyleCache[count].getText().setText(label);
-		  styles.push(labelStyleCache[count]);
-		  count++;
-		});
-	  }
-	  return styles;
-	};
-	var source = new ol.source.Vector();
-
-	var measureLayer = new ol.layer.Vector({
-	  source: source,
-	  displayInLayerSwitcher: false,
-	  style: function (feature) {
-		labelStyleCache = [];
-		return styleFunction(feature);
-	  }
-	});
-
-	map.addLayer(measureLayer);
-
-	var draw; // global so we can remove it later
-	function addInteraction() {
-	  var type = typeSelect.value;
-	  draw = new ol.interaction.Draw({
-		source: source,
-		type: /** @type {ol.geom.GeometryType} */ (type),
-		style: function (feature) {
-				  return styleFunction(feature, type);
-				}
-	  });
-
-	  var listener;
-	  draw.on('drawstart',
-		  function(evt) {
-			// set sketch
-			sketch = evt.feature;
-
-			/** @type {ol.Coordinate|undefined} */
-			var tooltipCoord = evt.coordinate;
-
-			listener = sketch.getGeometry().on('change', function(evt) {
-			  var geom = evt.target;
-			  var output;
-			  if (geom instanceof ol.geom.Polygon) {
-					  output = formatArea(/** @type {ol.geom.Polygon} */ (geom));
-					  tooltipCoord = geom.getInteriorPoint().getCoordinates();
-					} else if (geom instanceof ol.geom.LineString) {
-					  output = formatLength(/** @type {ol.geom.LineString} */ (geom));
-					  tooltipCoord = geom.getLastCoordinate();
-					}
-			  measureTooltipElement.innerHTML = output;
-			  measureTooltip.setPosition(tooltipCoord);
-			});
-		  }, this);
-
-	  draw.on('drawend',
-		  function(evt) {
-			measureTooltipElement.className = 'tooltip tooltip-static';
-			measureTooltip.setOffset([0, -7]);
-			// unset sketch
-			sketch = null;
-			// unset tooltip so that a new one can be created
-			measureTooltipElement = null;
-			createMeasureTooltip();
-			ol.Observable.unByKey(listener);
-		  }, this);
-	}
-
-
-	/**
-	 * Creates a new help tooltip
-	 */
-	function createHelpTooltip() {
-	  if (helpTooltipElement) {
-		helpTooltipElement.parentNode.removeChild(helpTooltipElement);
-	  }
-	  helpTooltipElement = document.createElement('div');
-	  helpTooltipElement.className = 'tooltip hidden';
-	  helpTooltip = new ol.Overlay({
-		element: helpTooltipElement,
-		offset: [15, 0],
-		positioning: 'center-left'
-	  });
-	  map.addOverlay(helpTooltip);
-	}
-
-
-	/**
-	 * Creates a new measure tooltip
-	 */
-	function createMeasureTooltip() {
-	  if (measureTooltipElement) {
-		measureTooltipElement.parentNode.removeChild(measureTooltipElement);
-	  }
-	  measureTooltipElement = document.createElement('div');
-	  measureTooltipElement.className = 'tooltip tooltip-measure';
-	  measureTooltip = new ol.Overlay({
-		element: measureTooltipElement,
-		offset: [0, -15],
-		positioning: 'bottom-center'
-	  });
-	  map.addOverlay(measureTooltip);
-	}
-
-
-  /**
-  * format length output
-  * @param {ol.geom.LineString} line
-  * @return {string}
-  */
-  var formatLength = function(line) {
-    var length;
-    var coordinates = line.getCoordinates();
-    length = 0;
-    var sourceProj = map.getView().getProjection();
-    for (var i = 0, ii = coordinates.length - 1; i < ii; ++i) {
-        var c1 = ol.proj.transform(coordinates[i], sourceProj, 'EPSG:4326');
-        var c2 = ol.proj.transform(coordinates[i + 1], sourceProj, 'EPSG:4326');
-        length += ol.sphere.getDistance(c1, c2);
+  // If LENGTH mode → hide/disable area-only units
+  if (typeSelect.value === 'LineString') {
+    Array.from(unitSelect.options).forEach(function (opt) {
+      if (opt.value === 'acres' || opt.value === 'hectares') {
+        opt.disabled = true;
+        opt.style.display = 'none';
       }
-    var output;
-    if (length > 100) {
-      output = (Math.round(length / 1000 * 100) / 100) +
-          ' ' + 'km';
-    } else {
-      output = (Math.round(length * 100) / 100) +
-          ' ' + 'm';
+    });
+    // Force metric if area unit was selected
+    if (unitSelect.value === 'acres' || unitSelect.value === 'hectares') {
+      unitSelect.value = 'metric';
     }
-    return output;
-  };
-
-  /**
-  * Format area output.
-  * @param {ol.geom.Polygon} polygon The polygon.
-  * @return {string} Formatted area.
-  */
-  var formatArea = function (polygon) {
-    var area = polygon.getArea();
-    var output;
-    if (area > 1000000) {
-    output =
-      Math.round((area / 1000000) * 1000) / 1000 + " " + "km<sup>2</sup>";
-    } else {
-    output = Math.round(area * 100) / 100 + " " + "m<sup>2</sup>";
-    }
-    return output;
-  };
-
-  addInteraction();
-
-  var parentElement = document.querySelector(".measure-control");
-  var elementToMove = document.getElementById("form_measure");
-  if (elementToMove && parentElement) {
-    parentElement.insertBefore(elementToMove, parentElement.firstChild);
   }
+}
 
+// ✅ Apply initial state
+updateUnitOptions();
+
+// ---------- LAYER ----------
+var measureSource = new ol.source.Vector();
+
+var measureLayer = new ol.layer.Vector({
+  source: measureSource,
+  zIndex: 1000,
+  style: new ol.style.Style({
+    stroke: new ol.style.Stroke({
+      color:'#007bff', width:3, lineDash:[6,4]
+    }),
+    fill: new ol.style.Fill({
+      color:'rgba(0,123,255,0.2)'
+    })
+  })
+});
+map.addLayer(measureLayer);
+
+// ---------- TOOLTIP ----------
+var tooltipEl = document.createElement('div');
+tooltipEl.className = 'ol-tooltip';
+
+var tooltipOverlay = new ol.Overlay({
+  element: tooltipEl,
+  offset: [0,-15],
+  positioning: 'bottom-center'
+});
+map.addOverlay(tooltipOverlay);
+
+// ---------- FORMAT ----------
+function formatLength(m,u){
+  if(u==='imperial'){
+    var ft=m*3.28084;
+    return ft>5280?(ft/5280).toFixed(2)+' mi':ft.toFixed(2)+' ft';
+  }
+  return m>1000?(m/1000).toFixed(2)+' km':m.toFixed(2)+' m';
+}
+
+function formatArea(a,u){
+  if(u==='imperial'){
+    var ft2=a*10.7639;
+    return ft2>27878400?(ft2/27878400).toFixed(3)+' mi²':ft2.toFixed(2)+' ft²';
+  }
+  if(u==='hectares') return (a/10000).toFixed(3)+' ha';
+  if(u==='acres') return (a/4046.8564224).toFixed(3)+' ac';
+  return a>1e6?(a/1e6).toFixed(3)+' km²':a.toFixed(2)+' m²';
+}
+
+// ---------- DRAW ----------
+function addDraw(){
+  removeDraw();
+
+  draw = new ol.interaction.Draw({
+    source: measureSource,
+    type: typeSelect.value
+  });
+
+  draw.on('drawstart', function(e){
+    sketch = e.feature;
+
+    listenerKey = sketch.getGeometry().on('change', function(evt){
+      var geom = evt.target;
+      var output='', coord;
+
+      if(geom instanceof ol.geom.LineString){
+        output = formatLength(geom.getLength(), unitSelect.value);
+        coord = geom.getLastCoordinate();
+      }
+
+      if(geom instanceof ol.geom.Polygon){
+        var coords = geom.getCoordinates()[0];
+        if(coords.length > 2){
+          output = formatArea(geom.getArea(), unitSelect.value);
+          coord = geom.getInteriorPoint().getCoordinates();
+        } else {
+          var line = new ol.geom.LineString(coords);
+          output = formatLength(line.getLength(), unitSelect.value);
+          coord = line.getLastCoordinate();
+        }
+      }
+
+      tooltipEl.innerHTML = output;
+      tooltipOverlay.setPosition(coord);
+    });
+  });
+
+  draw.on('drawend', function(){
+    tooltipEl.className = 'ol-tooltip ol-tooltip-static';
+    ol.Observable.unByKey(listenerKey);
+    sketch = null;
+  });
+
+  map.addInteraction(draw);
+}
+
+// ---------- SNAP ----------
+function enableSnap(){
+  disableSnap();
+  map.getLayers().getArray().forEach(function(l){
+    var s = l.getSource && l.getSource();
+    if(s instanceof ol.source.Vector){
+      var snap = new ol.interaction.Snap({source:s});
+      map.addInteraction(snap);
+      snapList.push(snap);
+    }
+  });
+}
+
+function disableSnap(){
+  snapList.forEach(function(s){ map.removeInteraction(s); });
+  snapList=[];
+}
+
+// ---------- EVENTS ----------
+measureBtn.onclick = function(){
+  measureActive = !measureActive;
+  panel.style.display = measureActive?'block':'none';
+
+  if(measureActive){
+    addDraw();
+    if(snapEnabled) enableSnap();
+    measureBtn.style.background='#007bff';
+  } else {
+    removeDraw();
+    disableSnap();
+    measureSource.clear();
+    tooltipOverlay.setPosition(undefined);
+    measureBtn.style.background='';
+  }
+};
+
+snapBtn.onclick = function(){
+  snapEnabled = !snapEnabled;
+  snapBtn.innerHTML = snapEnabled?'🧲 ON':'🧲 OFF';
+  snapEnabled?enableSnap():disableSnap();
+};
+
+// ---------- UNIT / TYPE CHANGE ----------
+typeSelect.onchange = function () {
+  updateUnitOptions(); // ✅ Use shared function
+  
+  // Restart drawing safely
+  if (measureActive) {
+    measureSource.clear();
+    addDraw();
+    if (snapEnabled) {
+      enableSnap();
+    }
+  }
+};
+
+unitSelect.onchange = function () {
+  if (measureActive) {
+    measureSource.clear();
+    addDraw();
+    if (snapEnabled) {
+      enableSnap();
+    }
+  }
+};
+
+function removeDraw(){
+  if(draw) map.removeInteraction(draw);
+  draw = null;
+}
+
+//-------------------------------------------------------------------------------
+// ---------- ADD CONTROL ----------
+topLeftContainerDiv.appendChild(measureCtrl);
 
 //geocoder
 
@@ -1254,6 +1147,7 @@ document.addEventListener('DOMContentLoaded', function() {
         bottomRightContainerDiv.appendChild(attributionControl);
 
     }
+
 
 
 
