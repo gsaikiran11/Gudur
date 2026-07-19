@@ -491,11 +491,3 @@ button[style*="28a745"] {
   border-color: #1e7e34 !important;
 }
 
-
-.ol-popup a {
-    pointer-events: auto;
-    color: blue;
-    text-decoration: underline;
-    cursor: pointer;
-}
-
