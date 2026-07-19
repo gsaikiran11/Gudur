@@ -146,17 +146,38 @@ function createPopupField(currentFeature, currentFeatureKeys, layer) {
                 layer.get('fieldLabels')[currentFeatureKeys[i]] == "header label - visible with data") {
                 popupField += '<strong>' + layer.get('fieldAliases')[currentFeatureKeys[i]] + '</strong><br />';
             }
-            if (layer.get('fieldImages')[currentFeatureKeys[i]] != "ExternalResource") {
-				popupField += (currentFeature.get(currentFeatureKeys[i]) != null ? autolinker.link(currentFeature.get(currentFeatureKeys[i]).toLocaleString()) + '</td>' : '');
-			} else {
-				var fieldValue = currentFeature.get(currentFeatureKeys[i]);
-				if (/\.(gif|jpg|jpeg|tif|tiff|png|avif|webp|svg)$/i.test(fieldValue)) {
-					popupField += (fieldValue != null ? '<img src="images/' + fieldValue.replace(/[\\\/:]/g, '_').trim() + '" /></td>' : '');
-				} else if (/\.(mp4|webm|ogg|avi|mov|flv)$/i.test(fieldValue)) {
-					popupField += (fieldValue != null ? '<video controls><source src="images/' + fieldValue.replace(/[\\\/:]/g, '_').trim() + '" type="video/mp4">Il tuo browser non supporta il tag video.</video></td>' : '');
-				} else {
+           // if (layer.get('fieldImages')[currentFeatureKeys[i]] != "ExternalResource") {
+				//popupField += (currentFeature.get(currentFeatureKeys[i]) != null ? autolinker.link(currentFeature.get(currentFeatureKeys[i]).toLocaleString()) + '</td>' : '');
+			//} else {
+			//	var fieldValue = currentFeature.get(currentFeatureKeys[i]);
+			//	if (/\.(gif|jpg|jpeg|tif|tiff|png|avif|webp|svg)$/i.test(fieldValue)) {
+			//		popupField += (fieldValue != null ? '<img src="images/' + fieldValue.replace(/[\\\/:]/g, '_').trim() + '" /></td>' : '');
+			//	} else if (/\.(mp4|webm|ogg|avi|mov|flv)$/i.test(fieldValue)) {
+			//		popupField += (fieldValue != null ? '<video controls><source src="images/' + fieldValue.replace(/[\\\/:]/g, '_').trim() + '" type="video/mp4">Il tuo browser non supporta il tag video.</video></td>' : '');
+			//	} else {
 					popupField += (fieldValue != null ? autolinker.link(fieldValue.toLocaleString()) + '</td>' : '');
-				}
+			//	}
+
+if (layer.get('fieldImages')[currentFeatureKeys[i]] != "ExternalResource") {
+    // Check if this field is LP_No — make it a Bhunaksha link
+    if (currentFeatureKeys[i] === 'LP_No' && currentFeature.get(currentFeatureKeys[i]) != null) {
+        var plotNo = currentFeature.get(currentFeatureKeys[i]).toString().trim();
+        popupField += '<a href="' + getBhunakshaUrl(plotNo) + '" target="_blank" rel="noopener noreferrer" style="color:blue; text-decoration:underline; cursor:pointer;">' 
+            + plotNo + '</a></td>';
+    } else {
+        popupField += (currentFeature.get(currentFeatureKeys[i]) != null ? autolinker.link(currentFeature.get(currentFeatureKeys[i]).toLocaleString()) + '</td>' : '');
+    }
+} else {
+    var fieldValue = currentFeature.get(currentFeatureKeys[i]);
+    if (/\.(gif|jpg|jpeg|tif|tiff|png|avif|webp|svg)$/i.test(fieldValue)) {
+        popupField += (fieldValue != null ? '<img src="images/' + fieldValue.replace(/[\\\/:]/g, '_').trim() + '" /></td>' : '');
+    } else if (/\.(mp4|webm|ogg|avi|mov|flv)$/i.test(fieldValue)) {
+        popupField += (fieldValue != null ? '<video controls><source src="images/' + fieldValue.replace(/[\\\/:]/g, '_').trim() + '" type="video/mp4">Il tuo browser non supporta il tag video.</video></td>' : '');
+    } else {
+        popupField += (fieldValue != null ? autolinker.link(fieldValue.toLocaleString()) + '</td>' : '');
+    }
+}
+			
 			}
             popupText += '<tr>' + popupField + '</tr>';
         }
@@ -166,6 +187,17 @@ function createPopupField(currentFeature, currentFeatureKeys, layer) {
 
 var highlight;
 var autolinker = new Autolinker({truncate: {length: 30, location: 'smart'}});
+
+-------------------------------------------------------------------------------------
+// Bhunaksha Report Link Generator
+function getBhunakshaUrl(plotNo) {
+    var giscode = 'B1306004_'; // ⚠️ REPLACE with your actual Gudur village GIS code
+    return 'https://bhunaksha.ap.gov.in/bhunakshalpm/plotReportPDF.jsp?state=28&giscode=' 
+        + encodeURIComponent(giscode) 
+        + '&plotno=' + encodeURIComponent(plotNo) 
+        + '&sameowner=false&derivedLayers=-1&selectedLayers=-1&scale=0';
+}
+-------------------------------------------------------------------------------------
 
 function onPointerMove(evt) {
     if (!doHover && !doHighlight) {
