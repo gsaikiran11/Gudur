@@ -492,3 +492,10 @@ button[style*="28a745"] {
 }
 
 
+.ol-popup a {
+    pointer-events: auto;
+    color: blue;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
