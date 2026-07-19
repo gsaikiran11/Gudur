@@ -155,7 +155,7 @@ function createPopupField(currentFeature, currentFeatureKeys, layer) {
 			//	} else if (/\.(mp4|webm|ogg|avi|mov|flv)$/i.test(fieldValue)) {
 			//		popupField += (fieldValue != null ? '<video controls><source src="images/' + fieldValue.replace(/[\\\/:]/g, '_').trim() + '" type="video/mp4">Il tuo browser non supporta il tag video.</video></td>' : '');
 			//	} else {
-					popupField += (fieldValue != null ? autolinker.link(fieldValue.toLocaleString()) + '</td>' : '');
+			//		popupField += (fieldValue != null ? autolinker.link(fieldValue.toLocaleString()) + '</td>' : '');
 			//	}
 
 if (layer.get('fieldImages')[currentFeatureKeys[i]] != "ExternalResource") {
