@@ -5,10 +5,10 @@ const CACHE_NAME = `${APP_PREFIX}${VERSION}`;
 
 // Keep the precache minimal and resilient; add more known files as desired.
 const PRECACHE = [
-  '/Gudur/',
-  '/Gudur/index.html',
-  '/Gudur/qgis2web.js',
-  '/Gudur/qgis2web.css'
+  '/GudurMandal/',
+  '/GudurMandal/index.html',
+  '/GudurMandal/qgis2web.js',
+  '/GudurMandal/qgis2web.css'
 ];
 
 // Install: add known essentials, but don't fail if some files are missing
